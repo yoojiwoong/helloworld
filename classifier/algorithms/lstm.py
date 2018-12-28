@@ -1,3 +1,8 @@
+from keras.layers.core import Activation, Dense
+from keras.models import Sequential
+from keras.callbacks import ModelCheckpoint, TensorBoard
+from keras.layers.recurrent import LSTM
+from .. import Const
 from .. import Manager
 
 import os
@@ -5,7 +10,7 @@ import os
 
 def make_model(model_name, input_shape, batch_size, num_epochs, x_train, y_train):
     """
-    LSTM 기법으로 데이터를 학습함.
+    DNN 기법으로 데이터를 학습함.
 
     Parameters
     ----------
@@ -28,15 +33,33 @@ def make_model(model_name, input_shape, batch_size, num_epochs, x_train, y_train
         생성된 모델과 학습 과정을 기록한 history
     """
 
-    model, history = []
+    x_train = x_train.reshape([len(x_train), len(x_train[0]), 1])
+
+    model = Sequential()
+    model.name = model_name
+    model.add(LSTM(128, input_shape=(len(x_train[0]), 1)))
+    model.add(Dense(64))
+    model.add(Dense(1))
+    model.add(Activation('sigmoid'))
+    if Const.DEBUG_MODE == 1:
+        model.summary()
+
+    model.compile(loss='binary_crossentropy', optimizer="adam", metrics=["accuracy"])
+
+    file_path = os.path.join(Const.MODEL_DIR, model_name + '.hdf5')
+    checkpoint = ModelCheckpoint(file_path, monitor='loss', verbose=0, save_weights_only=True, save_best_only=True,
+                                 mode='auto', period=1)
+    tensor_board = TensorBoard(log_dir='logs/', histogram_freq=0, batch_size=batch_size)
+    history = model.fit(x=x_train, y=y_train, batch_size=batch_size, epochs=num_epochs, verbose=Const.DEBUG_MODE,
+                        callbacks=[checkpoint, tensor_board], validation_split=0.2)
+    model.save(file_path)
 
     return model, history
 
 
-
 def evaluate(model_name, x_test, y_test):
     """
-    LSTM 기법으로 평가함
+    DNN 기법으로 평가함
 
     Parameters
     ----------
@@ -59,6 +82,11 @@ def evaluate(model_name, x_test, y_test):
     """
 
     model = Manager.load_model_manager(model_name)
-    pred, acc = []
+    x_test = x_test.reshape([len(x_test), len(x_test[0]), 1])
 
-    return pred, acc
+    score, acc = model.evaluate(x_test, y_test, verbose=Const.DEBUG_MODE)
+    pred = model.predict(x_test)
+    if Const.DEBUG_MODE == 1:
+        print("Test score: %.3f, accuracy: %.3f" % (score, acc))
+
+    return pred,
