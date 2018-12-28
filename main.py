@@ -2,6 +2,8 @@ from classifier import *
 from classifier import algorithms
 import argparse
 
+# 아 내가 이걸 왜 하고 있는거야 스바거
+
 if __name__ == "__main__":
     # Argument Setting
     parser = argparse.ArgumentParser()
